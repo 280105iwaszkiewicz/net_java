@@ -1,0 +1,32 @@
+using lab1;
+using System;
+
+namespace lab1
+{
+    internal class FizzBuzz
+{
+    int limit;
+
+    public FizzBuzz(int n) { limit = n; }
+
+        public void Wyswietl()
+        {
+            for (int i = 1; i <= limit; i++)
+            {
+                if (i % 15 == 0) Console.WriteLine("FizzBuzz");
+                else if (i % 3 == 0) Console.WriteLine("Fizz");
+                else if (i % 5 == 0) Console.WriteLine("Buzz1");
+                else Console.WriteLine(i);
+            }
+        }
+    }
+internal class Program
+{
+    static void Main(string[] args)
+    {
+            var pi = new FizzBuzz(20);
+            pi.Wyswietl();
+           
+    }
+}
+}
