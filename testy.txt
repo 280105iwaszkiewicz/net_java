@@ -1,0 +1,64 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
+using ProblemPlecakowy;
+
+namespace TestProject1
+{
+    [TestClass]
+    public class TestyProblemu
+    {
+        [TestMethod]
+        public void TestIloscPrzedmiotow()
+        {
+            int n = 10;
+            Problem problem = new Problem(n, 1);
+
+            Assert.AreEqual(n, problem.wartosci.Count);
+            Assert.AreEqual(n, problem.wagi.Count);
+        }
+
+        [TestMethod]
+        public void TestWagi()
+        {
+            Problem problem = new Problem(10, 2);
+
+            int pojemnosc = 15;
+
+            Result wynik = problem.Rozwiaz(pojemnosc);
+
+            Assert.IsTrue(wynik.sumaWag <= pojemnosc);
+        }
+
+        [TestMethod]
+        public void TestCzyCosWybrano()
+        {
+            Problem problem = new Problem(5, 3);
+
+            Result wynik = problem.Rozwiaz(10);
+
+            Assert.IsTrue(wynik.przedmioty.Count >= 0);
+        }
+
+        [TestMethod]
+        public void TestWszystko()
+        {
+            Problem problem = new Problem(5, 1);
+
+            Result wynik = problem.Rozwiaz(100);
+
+            Assert.AreEqual(5, wynik.przedmioty.Count);
+        }
+
+        [TestMethod]
+        public void TestPusty()
+        {
+            Problem problem = new Problem(5, 1);
+
+            Result wynik = problem.Rozwiaz(0);
+
+            Assert.AreEqual(0, wynik.przedmioty.Count);
+        }
+
+
+    }
+}
