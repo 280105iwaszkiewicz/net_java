@@ -1,0 +1,122 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("TestProject1")]
+
+namespace ProblemPlecakowy
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Podaj seed (liczbę do losowania):");
+            int seed = int.Parse(Console.ReadLine());
+
+            Console.WriteLine("Podaj liczbę przedmiotów:");
+            int liczbaPrzedmiotow = int.Parse(Console.ReadLine());
+
+            Console.WriteLine("Podaj pojemność plecaka:");
+            int pojemnosc = int.Parse(Console.ReadLine());
+
+            Problem problem = new Problem(liczbaPrzedmiotow, seed);
+
+            Console.WriteLine("\nWygenerowane przedmioty:");
+            Console.WriteLine(problem);
+
+            Result wynik = problem.Rozwiaz(pojemnosc);
+
+            Console.WriteLine("\nWynik:");
+            Console.WriteLine(wynik);
+        }
+    }
+
+    class Problem
+    {
+        public int liczbaPrzedmiotow;
+        public List<int> wartosci = new List<int>();
+        public List<int> wagi = new List<int>();
+
+        public Problem(int liczbaPrzedmiotow, int seed)
+        {
+            this.liczbaPrzedmiotow = liczbaPrzedmiotow;
+
+            Random los = new Random(seed);
+
+            for (int i = 0; i < liczbaPrzedmiotow; i++)
+            {
+                wartosci.Add(los.Next(1, 11));
+                wagi.Add(los.Next(1, 11));
+            }
+        }
+
+        public Result Rozwiaz(int pojemnosc)
+        {
+            List<int> indeksy = Enumerable.Range(0, liczbaPrzedmiotow).ToList();
+
+            indeksy.Sort((a, b) =>
+            (wartosci[b] / (double)wagi[b]).CompareTo(wartosci[a] / (double)wagi[a]));
+
+            int sumaWartosci = 0;
+            int sumaWag = 0;
+
+            List<int> wybrane = new List<int>();
+
+            foreach (int i in indeksy)
+            {
+                if (sumaWag + wagi[i] <= pojemnosc)
+                {
+                    wybrane.Add(i);
+                    sumaWag += wagi[i];
+                    sumaWartosci += wartosci[i];
+                }
+            }
+
+            return new Result(wybrane, sumaWartosci, sumaWag);
+        }
+
+        public override string ToString()
+        {
+            string tekst = "";
+
+            for (int i = 0; i < liczbaPrzedmiotow; i++)
+            {
+                tekst += "Przedmiot " + i +
+                         " | wartość: " + wartosci[i] +
+                         " | waga: " + wagi[i] + "\n";
+            }
+
+            return tekst;
+        }
+    }
+
+    class Result
+    {
+        public List<int> przedmioty;
+        public int sumaWartosci;
+        public int sumaWag;
+
+        public Result(List<int> przedmioty, int sumaWartosci, int sumaWag)
+        {
+            this.przedmioty = przedmioty;
+            this.sumaWartosci = sumaWartosci;
+            this.sumaWag = sumaWag;
+        }
+
+        public override string ToString()
+        {
+            string tekst = "Przedmioty w plecaku: ";
+
+            foreach (int p in przedmioty)
+            {
+                tekst += p + " ";
+            }
+
+            tekst += "\nSuma wartości: " + sumaWartosci;
+            tekst += "\nSuma wag: " + sumaWag;
+
+            return tekst;
+        }
+    }
+}
