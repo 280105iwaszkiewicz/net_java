@@ -47,11 +47,11 @@ this.przedmioty = przedmioty; this.sumaWartosci = sumaWartosci;
 this.sumaWag = sumaWag; }
 
 
-============================================================
+===========================================================================
 
 Zadanie 2 — TESTY JEDNOSTKOWE
 
-Testy jednostkowe problemu plecakowego w C#
+Testy jednostkowe problemu plecakowego
 
 Projekt zawiera zestaw testów jednostkowych sprawdzających poprawność
 działania aplikacji rozwiązującej problem plecakowy. Testy zostały
