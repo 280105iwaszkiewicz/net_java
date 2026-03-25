@@ -1,0 +1,34 @@
+using System;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+class ViesResponse
+{
+    public bool isValid { get; set; }
+    public string name { get; set; }
+    public string address { get; set; }
+    public string vatNumber { get; set; }
+}
+
+class Program
+{
+    static async Task Main()
+    {
+        Console.Write("Kod kraju (np. PL): ");
+        string country = Console.ReadLine();
+
+        Console.Write("NIP (np. 5260309174): ");
+        string vat = Console.ReadLine();
+
+        using HttpClient client = new HttpClient();
+        string url = $"https://ec.europa.eu/taxation_customs/vies/rest-api/ms/{country}/vat/{vat}";
+
+        string response = await client.GetStringAsync(url);
+        ViesResponse data = JsonSerializer.Deserialize<ViesResponse>(response);
+
+        Console.WriteLine($"Firma: {data.name}");
+        Console.WriteLine($"Adres: {data.address}");
+        Console.WriteLine($"Czy aktywny: {data.isValid}");
+    }
+}
