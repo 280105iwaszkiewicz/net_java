@@ -1,0 +1,87 @@
+using System;
+using System.Collections.Generic; 
+using System.IO; 
+using System.Linq; 
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+class ViesResponse
+{
+    public bool isValid { get; set; }
+    public string name { get; set; }
+    public string address { get; set; }
+    public string vatNumber { get; set; }
+}
+
+class Country
+{
+    public string Code { get; set; }
+}
+
+class Taxpayer
+{
+    public string VatNumber { get; set; }
+    public string Name { get; set; }
+    public Country Country { get; set; } 
+}
+
+
+class Program
+{
+    static async Task Main()
+    {
+        string dbPath = "baza.json";
+        List<Taxpayer> db = new List<Taxpayer>();
+
+        if (File.Exists(dbPath))
+        {
+            string jsonDb = File.ReadAllText(dbPath);
+            db = JsonSerializer.Deserialize<List<Taxpayer>>(jsonDb) ?? new List<Taxpayer>();
+        }
+
+        Console.Write("Kraj: ");
+        string country = Console.ReadLine();
+
+        Console.Write("NIP: ");
+        string vat = Console.ReadLine();
+
+        var existingCompany = db.FirstOrDefault(t => t.VatNumber == vat && t.Country.Code == country);
+
+        if (existingCompany != null)
+        {
+            Console.WriteLine("\nFirma znaleziona w lokalnej bazie. Omijam łączenie z API.");
+            Console.WriteLine($"Firma: {existingCompany.Name}");
+        }
+        else
+        {
+            Console.WriteLine("\nBrak firmy w bazie. Pobieram dane z API...");
+            using HttpClient client = new HttpClient();
+            string url = $"https://ec.europa.eu/taxation_customs/vies/rest-api/ms/{country}/vat/{vat}";
+
+            string response = await client.GetStringAsync(url);
+            ViesResponse data = JsonSerializer.Deserialize<ViesResponse>(response);
+
+            Console.WriteLine($"Firma: {data.name}");
+            Console.WriteLine($"Adres: {data.address}");
+            Console.WriteLine($"Aktywny: {data.isValid}");
+
+            Taxpayer newTaxpayer = new Taxpayer
+            {
+                VatNumber = vat,
+                Name = string.IsNullOrEmpty(data.name) ? "BRAK NAZWY" : data.name,
+                Country = new Country { Code = country }
+            };
+
+            db.Add(newTaxpayer); 
+
+            File.WriteAllText(dbPath, JsonSerializer.Serialize(db));
+        }
+
+        Console.WriteLine("\n--- CAŁA BAZA PODATNIKÓW (Posortowana po nazwie) ---");
+        foreach (var t in db.OrderBy(x => x.Name))
+        {
+            Console.WriteLine($"[{t.Country.Code}] NIP: {t.VatNumber} | Firma: {t.Name}");
+        }
+    }
+}
