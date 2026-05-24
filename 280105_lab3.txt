@@ -1,0 +1,135 @@
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Laboratorium3
+{
+    class MatrixCalculator
+    {
+        private double[,] A;
+        private double[,] B;
+        private double[,] C;
+        private int size;
+        private readonly object locker = new object();
+
+        public MatrixCalculator(int size)
+        {
+            this.size = size;
+            A = GenerateMatrix(size);
+            B = GenerateMatrix(size);
+            C = new double[size, size];
+        }
+
+        private double[,] GenerateMatrix(int s)
+        {
+            Random r = new Random();
+            double[,] m = new double[s, s];
+            for (int i = 0; i < s; i++)
+                for (int j = 0; j < s; j++) m[i, j] = r.NextDouble() * 10;
+            return m;
+        }
+
+        public void PrintAll()
+        {
+            Console.WriteLine("Macierz A:"); PrintMatrix(A);
+            Console.WriteLine("Macierz B:"); PrintMatrix(B);
+            Console.WriteLine("Macierz Wynikowa C:"); PrintMatrix(C);
+        }
+
+        private void PrintMatrix(double[,] m)
+        {
+            for (int i = 0; i < Math.Min(size, 5); i++)
+            {
+                for (int j = 0; j < Math.Min(size, 5); j++) Console.Write($"{m[i, j]:F2} ");
+                Console.WriteLine();
+            }
+            Console.WriteLine();
+        }
+
+        public long RunParallel(int threads)
+        {
+            Array.Clear(C, 0, C.Length);
+            var opt = new ParallelOptions { MaxDegreeOfParallelism = threads };
+            var sw = Stopwatch.StartNew();
+
+            Parallel.For(0, size, opt, i => {
+                for (int j = 0; j < size; j++)
+                {
+                    double sum = 0;
+                    for (int k = 0; k < size; k++) sum += A[i, k] * B[k, j];
+                    C[i, j] = sum;
+                }
+            });
+
+            sw.Stop();
+            return sw.ElapsedMilliseconds;
+        }
+
+        public long RunThreads(int threadsCount)
+        {
+            Array.Clear(C, 0, C.Length);
+            Thread[] threads = new Thread[threadsCount];
+            var sw = Stopwatch.StartNew();
+
+            int baseChunk = size / threadsCount;
+            int remainder = size % threadsCount;
+            int currentStart = 0;
+
+            for (int i = 0; i < threadsCount; i++)
+            {
+                int chunkSize = baseChunk + (i < remainder ? 1 : 0);
+                int start = currentStart;
+                int end = start + chunkSize;
+                currentStart = end;
+
+                threads[i] = new Thread(() => {
+                    for (int row = start; row < end; row++)
+                    {
+                        for (int col = 0; col < size; col++)
+                        {
+                            double temp = 0;
+                            for (int k = 0; k < size; k++) temp += A[row, k] * B[k, col];
+                            C[row, col] = temp;
+                        }
+                    }
+                });
+                threads[i].Start();
+            }
+
+            foreach (var t in threads) t.Join();
+            sw.Stop();
+            return sw.ElapsedMilliseconds;
+        }
+    }
+
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+            int size = 500;      
+            int threads = 6;     
+            int iterations = 5;  
+
+            MatrixCalculator calc = new MatrixCalculator(size);
+
+            calc.RunParallel(threads);
+            calc.PrintAll();
+
+            Console.WriteLine($"Testy dla rozmiaru {size}x{size} i {threads} wątków ({iterations} prób):");
+
+            long totalParallel = 0;
+            long totalThreads = 0;
+
+            for (int i = 0; i < iterations; i++)
+            {
+                totalParallel += calc.RunParallel(threads);
+                totalThreads += calc.RunThreads(threads);
+                Console.Write(".");
+            }
+
+            Console.WriteLine($"\nŚredni czas Parallel.For: {totalParallel / iterations} ms");
+            Console.WriteLine($"Średni czas zwykłych Thread: {totalThreads / iterations} ms");
+        }
+    }
+}
