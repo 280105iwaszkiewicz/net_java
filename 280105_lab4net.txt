@@ -1,0 +1,79 @@
+@page "/weather"
+@using Microsoft.AspNetCore.Components.Web
+@rendermode InteractiveServer
+
+<PageTitle>Weather</PageTitle>
+<h1>Weather</h1>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @* Licznik ciepłych dni *@
+    <p>Warm days (>15°C): <b>@forecasts.Count(f => f.TemperatureC > 15)</b></p>
+
+    @* Przyciski do filtrowania *@
+    <button class="btn btn-primary" @onclick="ShowWarm">Warm only</button>
+    <button class="btn btn-secondary" @onclick="Reset">Reset</button>
+
+    @* Wyszukiwarka *@
+    <input class="form-control my-3" @oninput="Search" placeholder="Search summary..." />
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in forecasts)
+            {
+                <tr>
+                    <td>@f.Date.ToShortDateString()</td>
+                    <td>@f.TemperatureC</td>
+                    <td>@f.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private WeatherForecast[]? allData;    
+    private WeatherForecast[]? forecasts;  
+
+    protected override void OnInitialized()
+    {
+        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot" };
+
+        allData = Enumerable.Range(1, 10).Select(index => new WeatherForecast
+        {
+            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+            TemperatureC = Random.Shared.Next(-10, 40),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToArray();
+
+        forecasts = allData;
+    }
+
+    void ShowWarm() => forecasts = allData?.Where(f => f.TemperatureC > 15).ToArray();
+
+    void Reset() => forecasts = allData;
+
+    void Search(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? "";
+        forecasts = allData?.Where(f => f.Summary!.Contains(text, StringComparison.OrdinalIgnoreCase)).ToArray();
+    }
+
+    private class WeatherForecast
+    {
+        public DateOnly Date { get; set; }
+        public int TemperatureC { get; set; }
+        public string? Summary { get; set; }
+    }
+}
