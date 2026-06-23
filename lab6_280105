@@ -1,0 +1,163 @@
+package org.example;
+
+import javafx.application.Application;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+
+public class Main extends Application {
+    private Stage stage;
+    private BufferedImage orig = null, proc = null;
+    private ImageView viewO = new ImageView(), viewP = new ImageView();
+    private ComboBox<String> combo = new ComboBox<>();
+    private Button bEx, bScale, bRotL, bRotR, bSave;
+
+    public static void main(String[] args) { launch(args); }
+
+    @Override
+    public void start(Stage primaryStage) {
+        this.stage = primaryStage;
+        stage.setTitle("Politechnika Wrocławska - Obróbka Obrazów");
+
+        Label title = new Label("Aplikacja do Obróbki Obrazów");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        HBox header = new HBox(15, title);
+        
+        File fLogo = new File("pwr1.png");
+        if (fLogo.exists()) {
+            ImageView imgL = new ImageView(new Image(fLogo.toURI().toString()));
+            imgL.setFitHeight(70);
+            imgL.setPreserveRatio(true);
+            header.getChildren().add(imgL);
+        }
+
+        combo.getItems().addAll("Negatyw", "Progowanie", "Konturowanie");
+        bEx = new Button("Wykonaj"); bEx.setOnAction(e -> handleExecute());
+        Button bLoad = new Button("Wczytaj"); bLoad.setOnAction(e -> handleLoad());
+        bScale = new Button("Skaluj"); bScale.setOnAction(e -> handleScale());
+        bRotL = new Button("← 90°"); bRotL.setOnAction(e -> handleRotate(false));
+        bRotR = new Button("90° →"); bRotR.setOnAction(e -> handleRotate(true));
+        bSave = new Button("Zapisz"); bSave.setOnAction(e -> handleSave());
+
+        viewO.setFitWidth(300); viewO.setPreserveRatio(true);
+        viewP.setFitWidth(300); viewP.setPreserveRatio(true);
+
+        HBox controls = new HBox(10, bLoad, bScale, bRotL, bRotR, bSave);
+        HBox ops = new HBox(10, new Label("Operacja:"), combo, bEx);
+        HBox imgs = new HBox(20, new VBox(5, new Label("Oryginał:"), viewO), new VBox(5, new Label("Po zmianach:"), viewP));
+        
+        Label footer = new Label("Piotr Iwaszkiewicz, 280105");
+        footer.setStyle("-fx-font-style: italic;");
+
+        VBox root = new VBox(15, header, controls, ops, imgs, new HBox(footer));
+        root.setPadding(new Insets(15));
+        setBtns(true);
+
+        stage.setScene(new Scene(root, 700, 500));
+        stage.show();
+    }
+
+    private void setBtns(boolean d) {
+        bEx.setDisable(d); bScale.setDisable(d); bRotL.setDisable(d); bRotR.setDisable(d); bSave.setDisable(d);
+    }
+
+    private void toast(String m) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION, m, ButtonType.OK);
+        a.setHeaderText(null); a.show();
+    }
+
+    private void handleLoad() {
+        File f = new FileChooser().showOpenDialog(stage);
+        if (f != null && f.getName().toLowerCase().endsWith(".jpg")) {
+            try {
+                orig = ImageIO.read(f); proc = null;
+                viewO.setImage(SwingFXUtils.toFXImage(orig, null)); viewP.setImage(null);
+                setBtns(false); toast("Pomyślnie załadowano plik");
+            } catch (Exception ex) { toast("Nie udało się załadować pliku"); }
+        } else if (f != null) toast("Niedozwolony format pliku");
+    }
+
+    private void handleExecute() {
+        if (combo.getValue() == null) { toast("Nie wybrano operacji"); return; }
+        BufferedImage src = (proc != null) ? proc : orig;
+        proc = new BufferedImage(src.getWidth(), src.getHeight(), src.getType());
+        String op = combo.getValue();
+
+        if ("Negatyw".equals(op)) {
+            for (int x = 0; x < src.getWidth(); x++)
+                for (int y = 0; y < src.getHeight(); y++) {
+                    int rgb = src.getRGB(x, y);
+                    proc.setRGB(x, y, (rgb & 0xff000000) | (~rgb & 0x00ffffff));
+                }
+            toast("Negatyw został wygenerowany pomyślnie!");
+        } else if ("Progowanie".equals(op)) {
+            TextInputDialog d = new TextInputDialog("128");
+            d.setHeaderText("Podaj próg (0-255):");
+            int t = d.showAndWait().map(Integer::parseInt).orElse(-1);
+            if (t < 0 || t > 255) { toast("Nie udało się wykonać progowania."); return; }
+
+            for (int x = 0; x < src.getWidth(); x++)
+                for (int y = 0; y < src.getHeight(); y++) {
+                    int rgb = src.getRGB(x, y);
+                    int gray = (((rgb >> 16) & 0xff) + ((rgb >> 8) & 0xff) + (rgb & 0xff)) / 3;
+                    int c = (gray > t) ? 255 : 0;
+                    proc.setRGB(x, y, (0xff << 24) | (c << 16) | (c << 8) | c);
+                }
+            toast("Progowanie zostało przeprowadzone pomyślnie!");
+        } else if ("Konturowanie".equals(op)) {
+            for (int x = 1; x < src.getWidth() - 1; x++)
+                for (int y = 1; y < src.getHeight() - 1; y++) {
+                    int edge = Math.min(255, Math.abs((src.getRGB(x - 1, y) & 0xff) - (src.getRGB(x + 1, y) & 0xff)) * 2);
+                    proc.setRGB(x, y, (0xff << 24) | (edge << 16) | (edge << 8) | edge);
+                }
+            toast("Konturowanie zostało przeprowadzone pomyślnie!");
+        }
+        viewP.setImage(SwingFXUtils.toFXImage(proc, null));
+    }
+
+    private void handleScale() {
+        TextInputDialog dW = new TextInputDialog("800"); dW.setHeaderText("Szerokość (1-3000):");
+        int w = dW.showAndWait().map(Integer::parseInt).orElse(-1);
+        TextInputDialog dH = new TextInputDialog("600"); dH.setHeaderText("Wysokość (1-3000):");
+        int h = dH.showAndWait().map(Integer::parseInt).orElse(-1);
+
+        if (w > 0 && w <= 3000 && h > 0 && h <= 3000) {
+            BufferedImage src = (proc != null) ? proc : orig;
+            proc = new BufferedImage(w, h, src.getType());
+            proc.getGraphics().drawImage(src.getScaledInstance(w, h, java.awt.Image.SCALE_SMOOTH), 0, 0, null);
+            viewP.setImage(SwingFXUtils.toFXImage(proc, null));
+        } else toast("Wymagana liczba z zakresu 0-3000");
+    }
+
+    private void handleRotate(boolean r) {
+        BufferedImage src = (proc != null) ? proc : orig;
+        int w = src.getWidth(), h = src.getHeight();
+        proc = new BufferedImage(h, w, src.getType());
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++)
+                proc.setRGB(r ? h - 1 - y : y, r ? x : w - 1 - x, src.getRGB(x, y));
+        viewP.setImage(SwingFXUtils.toFXImage(proc, null));
+    }
+
+    private void handleSave() {
+        TextInputDialog d = new TextInputDialog("obrazek"); d.setHeaderText("Nazwa pliku (min 3 znaki):");
+        String name = d.showAndWait().orElse("");
+        if (name.length() < 3) { toast("Wpisz co najmniej 3 znaki"); return; }
+
+        File f = new File(new File(System.getProperty("user.home"), "Pictures"), name + ".jpg");
+        if (f.exists()) { toast("Plik już istnieje. Podaj inną nazwę!"); return; }
+        try {
+            ImageIO.write(proc != null ? proc : orig, "jpg", f);
+            toast("Zapisano obraz w pliku " + name + ".jpg");
+        } catch (Exception ex) { toast("Nie udało się zapisać pliku"); }
+    }
+}
